@@ -83,23 +83,16 @@ export class Indexer {
         this.blockIntervalMs = blockIntervalMs;
     }
 
-    // Use to initialize token creation block before starting the indexer
-    async setCreationBlock(token: Address): Promise<number> {
-        const creationBlock = await new Etherscan(
-            this.chain.id,
-            this.apikeys[this.explorer]
-        ).getCreationBlock(getAddress(token));
-
-        await this.db.processEventsFrom.insertOne({
-            chain: this.chain.id,
-            tokenAddress: getAddress(token),
-            block: creationBlock,
-        });
-
-        return creationBlock;
-    }
-
-    // Get the list of holders of a given token with pagination
+    /**
+     * Retrieves a sorted and paginated list of token holders for a specific token ID.
+     *
+     * @param tokenAddress - The address of the token contract.
+     * @param tokenId - The ID of the token to fetch holders for.
+     * @param sort - The sort order for the holders' balances, either "ASC" or "DESC".
+     * @param maxResults - The maximum number of results to return per page.
+     * @param page - The page number for pagination, defaults to 0.
+     * @returns A promise that resolves to an array of token holders with their balances.
+     */
     async getHolders(
         tokenAddress: Address,
         tokenId: number,
@@ -128,32 +121,16 @@ export class Indexer {
             .map((holder) => {
                 return {
                     holder: holder.holder,
-                    balance: holder.balance,
+                    balance: BigInt(holder.balance).toString(),
                 };
             })
             .slice(page * maxResults, lastElement);
     }
 
-    private getPublicClient(): PublicClient {
-        return createPublicClient({
-            chain: this.chain,
-            transport: http(this.rpc),
-        });
-    }
-
     private async fetchEvents(tokenAddress: Address): Promise<void> {
         let currentBlock = await this.getBlockNumber();
 
-        let fromBlock = (
-            await this.db.processEventsFrom.findOne({
-                chain: this.chain.id,
-                tokenAddress,
-            })
-        )?.block;
-
-        if (!fromBlock) {
-            fromBlock = await this.setCreationBlock(tokenAddress);
-        }
+        let fromBlock = await this.firstBlockToIndex(tokenAddress);
 
         while (currentBlock - fromBlock > this.blockTolerance) {
             const toBlock = Math.min(currentBlock, fromBlock + this.blockRange);
@@ -164,6 +141,32 @@ export class Indexer {
             );
             fromBlock += this.blockRange;
         }
+    }
+
+    private async firstBlockToIndex(tokenAddress: Address): Promise<number> {
+        return (
+            (
+                await this.db.processEventsFrom.findOne({
+                    chain: this.chain.id,
+                    tokenAddress,
+                })
+            )?.block ?? (await this.setCreationBlock(tokenAddress))
+        );
+    }
+
+    private async setCreationBlock(token: Address): Promise<number> {
+        const creationBlock = await new Etherscan(
+            this.chain.id,
+            this.apikeys[this.explorer]
+        ).getCreationBlock(getAddress(token));
+
+        await this.db.processEventsFrom.insertOne({
+            chain: this.chain.id,
+            tokenAddress: getAddress(token),
+            block: creationBlock,
+        });
+
+        return creationBlock;
     }
 
     private async getBlockNumber(): Promise<number> {
@@ -237,6 +240,13 @@ export class Indexer {
         );
     }
 
+    private getPublicClient(): PublicClient {
+        return createPublicClient({
+            chain: this.chain,
+            transport: http(this.rpc),
+        });
+    }
+
     private async updateBalances(
         tokenAddress: Address,
         tokenId: number,
@@ -244,15 +254,10 @@ export class Indexer {
         to: Address,
         amount: bigint
     ) {
-        if (from == to) return;
+        if (from == to || amount == BigInt(0)) return;
 
-        if (from != zeroAddress) {
-            await this.updateBalance(tokenAddress, tokenId, from, -amount);
-        }
-
-        if (to != zeroAddress) {
-            await this.updateBalance(tokenAddress, tokenId, to, amount);
-        }
+        await this.updateBalance(tokenAddress, tokenId, from, -amount);
+        await this.updateBalance(tokenAddress, tokenId, to, amount);
     }
 
     private async updateBalance(
@@ -261,24 +266,26 @@ export class Indexer {
         holder: Address,
         balanceChange: bigint
     ) {
+        if (holder == zeroAddress) return;
+
         const existing = await this.db.holders.findOne({
             chain: this.chain.id,
             tokenAddress,
             tokenId,
-            holder: getAddress(holder),
+            holder,
         });
 
         if (existing) {
-            let newBalance = BigInt(existing.balance) + balanceChange;
+            let updatedBalance = BigInt(existing.balance) + balanceChange;
             this.db.holders.updateOne(
                 {
                     chain: this.chain.id,
                     tokenAddress,
                     tokenId,
-                    holder: getAddress(holder),
+                    holder,
                 },
                 {
-                    balance: this.padBigInt(newBalance),
+                    balance: this.padBigInt(updatedBalance),
                 }
             );
         } else {
@@ -286,7 +293,7 @@ export class Indexer {
                 chain: this.chain.id,
                 tokenAddress,
                 tokenId,
-                holder: getAddress(holder),
+                holder,
                 balance: this.padBigInt(balanceChange),
             });
         }
