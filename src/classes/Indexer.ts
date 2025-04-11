@@ -7,7 +7,7 @@ import {
     zeroAddress,
 } from "viem";
 import type { Address, Chain, PublicClient } from "viem";
-import { Etherscan } from "./Etherscan";
+import { Explorer } from "../types/Explorer";
 
 interface Output {
     holder: string;
@@ -35,40 +35,26 @@ interface CachedBlock {
 export interface Network {
     chain: Chain;
     rpc: string;
-    explorer: string;
+    explorer: Explorer;
 }
 
-const holders = new Database<Holder>({ path: "../.db/holders.db" });
-const processEventsFrom = new Database<ProcessEventsFrom>({
-    path: "../.db/process_events_from.db",
-});
-const currentBlock = new Database<CachedBlock>({
-    path: "../.db/current_block.db",
-});
-
-const db = {
-    holders,
-    processEventsFrom,
-    currentBlock,
-};
+interface Db {
+    holders: Database<Holder>;
+    processEventsFrom: Database<ProcessEventsFrom>;
+    currentBlock: Database<CachedBlock>;
+}
 
 export class Indexer {
     chain: Chain;
     rpc: string;
-    explorer: string;
-    apikeys: Record<string, string>;
+    explorer: Explorer;
     blockRange: number;
     blockTolerance: number;
     blockIntervalMs: number;
-    db: {
-        holders: Database<Holder>;
-        processEventsFrom: Database<ProcessEventsFrom>;
-        currentBlock: Database<CachedBlock>;
-    };
+    db: Db;
 
     constructor(
         network: Network,
-        apiKeys: Record<string, string>,
         blockRange: number = 10_000,
         blockTolerance: number = 100,
         blockIntervalMs: number = 60 * 1000
@@ -76,8 +62,7 @@ export class Indexer {
         this.chain = network.chain;
         this.rpc = network.rpc;
         this.explorer = network.explorer;
-        this.apikeys = apiKeys;
-        this.db = db;
+        this.db = this.initDb();
         this.blockRange = blockRange;
         this.blockTolerance = blockTolerance;
         this.blockIntervalMs = blockIntervalMs;
@@ -155,10 +140,10 @@ export class Indexer {
     }
 
     private async setCreationBlock(token: Address): Promise<number> {
-        const creationBlock = await new Etherscan(
+        const creationBlock = await this.explorer.getCreationBlock(
             this.chain.id,
-            this.apikeys[this.explorer]
-        ).getCreationBlock(getAddress(token));
+            getAddress(token)
+        );
 
         await this.db.processEventsFrom.insertOne({
             chain: this.chain.id,
@@ -236,7 +221,7 @@ export class Indexer {
 
         await this.db.processEventsFrom.updateOne(
             { chain: this.chain.id, tokenAddress },
-            { block: endBlock }
+            { block: endBlock + 1 }
         );
     }
 
@@ -301,5 +286,21 @@ export class Indexer {
 
     private padBigInt(n: bigint, width: number = 78): string {
         return n.toString().padStart(width, "0");
+    }
+
+    private initDb(): Db {
+        const holders = new Database<Holder>({ path: "../.db/holders.db" });
+        const processEventsFrom = new Database<ProcessEventsFrom>({
+            path: "../.db/process_events_from.db",
+        });
+        const currentBlock = new Database<CachedBlock>({
+            path: "../.db/current_block.db",
+        });
+
+        return {
+            holders,
+            processEventsFrom,
+            currentBlock,
+        };
     }
 }

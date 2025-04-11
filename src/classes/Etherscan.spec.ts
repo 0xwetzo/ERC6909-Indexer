@@ -14,7 +14,7 @@ describe("Etherscan", () => {
     beforeEach(() => {
         sandbox = sinon.createSandbox();
         axiosStub = sandbox.stub(axios, "get");
-        etherscan = new Etherscan(chainId, apiKey);
+        etherscan = new Etherscan(apiKey);
     });
 
     afterEach(() => {
@@ -22,8 +22,7 @@ describe("Etherscan", () => {
     });
 
     describe("constructor", () => {
-        it("should initialize with the provided chainId and API key", () => {
-            expect(etherscan["chainId"]).to.equal(chainId); // Access private property for testing
+        it("should initialize with the provided API key", () => {
             expect(etherscan["apiKey"]).to.equal(apiKey); // Access private property for testing
         });
     });
@@ -38,6 +37,7 @@ describe("Etherscan", () => {
             axiosStub.resolves(mockResponse);
 
             const blockNumber = await etherscan.getCreationBlock(
+                chainId,
                 contractAddress
             );
 
@@ -59,7 +59,7 @@ describe("Etherscan", () => {
             axiosStub.resolves(mockResponse);
 
             try {
-                await etherscan.getCreationBlock(contractAddress);
+                await etherscan.getCreationBlock(chainId, contractAddress);
                 expect.fail("Should have thrown an error");
             } catch (error) {
                 if (error instanceof Error) {
@@ -80,7 +80,7 @@ describe("Etherscan", () => {
             axiosStub.rejects(new Error(errorMessage));
 
             try {
-                await etherscan.getCreationBlock(contractAddress);
+                await etherscan.getCreationBlock(chainId, contractAddress);
                 expect.fail("Should have thrown an error");
             } catch (error) {
                 if (error instanceof Error) {
@@ -102,6 +102,7 @@ describe("Etherscan", () => {
             axiosStub.resolves(mockResponse);
 
             const blockNumber = await etherscan.getCreationBlock(
+                chainId,
                 contractAddress
             );
 

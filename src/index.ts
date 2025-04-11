@@ -10,7 +10,7 @@ import {
 } from "@zhttp/core";
 import type { Address } from "viem";
 import { Indexer } from "./classes/Indexer";
-import { getApiKeys, getNetwork, getPort, networks } from "./config";
+import { getNetwork, getPort, networks } from "./config";
 
 extendZodWithOpenApi(z);
 
@@ -52,9 +52,8 @@ holdersController.endpoint(
         .response(erc6909Output)
         .handler(async (input) => {
             const network = getNetwork(input.query.chain);
-            const apikeys = getApiKeys();
 
-            const indexer = new Indexer(network, apikeys);
+            const indexer = new Indexer(network);
 
             const list = await indexer.getHolders(
                 input.query.token as Address,

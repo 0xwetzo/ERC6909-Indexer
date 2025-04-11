@@ -1,3 +1,3 @@
 export interface Explorer {
-    getCreationBlock(contractAddress: string): Promise<number>;
+    getCreationBlock(chainId: number, contractAddress: string): Promise<number>;
 }

@@ -2,6 +2,8 @@ import "dotenv/config";
 import { z } from "zod";
 import type { Network } from "./classes/Indexer";
 import { mainnet, base, optimism } from "viem/chains";
+import { Explorer } from "./types/Explorer";
+import { Etherscan } from "./classes/Etherscan";
 
 const envSchema = z.object({
     ETHERSCAN_API_KEY: z.string().min(1, "Etherscan API key is required"),
@@ -26,28 +28,27 @@ try {
 // Use the validated variables
 const { ETHERSCAN_API_KEY, PORT } = envVars;
 
-const apiKeys: Record<string, string> = {
-    Etherscan: ETHERSCAN_API_KEY,
+const explorers: Record<string, Explorer> = {
+    etherscan: new Etherscan(ETHERSCAN_API_KEY),
 };
 
 export const networks: Record<number, Network> = {
     [mainnet.id]: {
         chain: mainnet,
         rpc: "https://eth.llamarpc.com",
-        explorer: "Etherscan",
+        explorer: explorers.etherscan,
     },
     [base.id]: {
         chain: base,
         rpc: "https://base.llamarpc.com",
-        explorer: "Etherscan",
+        explorer: explorers.etherscan,
     },
     [optimism.id]: {
         chain: optimism,
         rpc: "https://optimism.llamarpc.com",
-        explorer: "Etherscan",
+        explorer: explorers.etherscan,
     },
 };
 
 export const getNetwork = (chainId: number): Network => networks[chainId];
-export const getApiKeys = (): Record<string, string> => apiKeys;
 export const getPort = (): number => PORT;
