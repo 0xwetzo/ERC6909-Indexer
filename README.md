@@ -17,6 +17,7 @@ Benefits:
 Drawbacks:
 
 -   Response can take time, especially if the token is not indexed yet
+-   Probably not adapted for large volumes of data
 
 ### Intended use
 

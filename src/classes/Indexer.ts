@@ -26,22 +26,17 @@ interface ProcessEventsFrom {
     block: number;
 }
 
-interface CachedBlock {
-    chain: number;
-    block: number;
-    time: number;
-}
-
 export interface Network {
     chain: Chain;
     rpc: string;
     explorer: Explorer;
+    blockRange?: number;
+    blockTolerance?: number;
 }
 
 interface Db {
     holders: Database<Holder>;
     processEventsFrom: Database<ProcessEventsFrom>;
-    currentBlock: Database<CachedBlock>;
 }
 
 export class Indexer {
@@ -50,22 +45,15 @@ export class Indexer {
     explorer: Explorer;
     blockRange: number;
     blockTolerance: number;
-    blockIntervalMs: number;
     db: Db;
 
-    constructor(
-        network: Network,
-        blockRange: number = 10_000,
-        blockTolerance: number = 100,
-        blockIntervalMs: number = 60 * 1000
-    ) {
+    constructor(network: Network) {
         this.chain = network.chain;
         this.rpc = network.rpc;
         this.explorer = network.explorer;
         this.db = this.initDb();
-        this.blockRange = blockRange;
-        this.blockTolerance = blockTolerance;
-        this.blockIntervalMs = blockIntervalMs;
+        this.blockRange = network.blockRange ?? 10_000;
+        this.blockTolerance = network.blockTolerance ?? 100;
     }
 
     /**
@@ -86,7 +74,9 @@ export class Indexer {
         page: number = 0
     ): Promise<Output[]> {
         // Update the holders
-        await this.fetchEvents(getAddress(tokenAddress));
+        if (page === 0) {
+            await this.fetchEvents(getAddress(tokenAddress));
+        }
 
         const holders = await this.db.holders.findMany({
             chain: this.chain.id,
@@ -113,7 +103,9 @@ export class Indexer {
     }
 
     private async fetchEvents(tokenAddress: Address): Promise<void> {
-        let currentBlock = await this.getBlockNumber();
+        const currentBlock = Number(
+            await this.getPublicClient().getBlockNumber()
+        );
 
         let fromBlock = await this.firstBlockToIndex(tokenAddress);
 
@@ -152,35 +144,6 @@ export class Indexer {
         });
 
         return creationBlock;
-    }
-
-    private async getBlockNumber(): Promise<number> {
-        let currentBlock: number;
-        const cachedBlock = await this.db.currentBlock.findOne({
-            chain: this.chain.id,
-        });
-        if (
-            cachedBlock &&
-            cachedBlock.time + this.blockIntervalMs > Date.now()
-        ) {
-            currentBlock = cachedBlock.block;
-        } else {
-            currentBlock = Number(
-                await this.getPublicClient().getBlockNumber()
-            );
-            const updated = await this.db.currentBlock.updateOne(
-                { chain: this.chain.id },
-                { block: currentBlock, time: Date.now() }
-            );
-            if (!updated) {
-                await this.db.currentBlock.insertOne({
-                    chain: this.chain.id,
-                    block: currentBlock,
-                    time: Date.now(),
-                });
-            }
-        }
-        return currentBlock;
     }
 
     private async fetchEventsInBlockRange(
@@ -293,14 +256,10 @@ export class Indexer {
         const processEventsFrom = new Database<ProcessEventsFrom>({
             path: "../.db/process_events_from.db",
         });
-        const currentBlock = new Database<CachedBlock>({
-            path: "../.db/current_block.db",
-        });
 
         return {
             holders,
             processEventsFrom,
-            currentBlock,
         };
     }
 }
