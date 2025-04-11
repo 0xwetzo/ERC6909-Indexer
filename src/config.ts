@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { z } from "zod";
-import { mainnet, base, optimism } from "viem/chains";
 import type { Network } from "./classes/Indexer";
+import { mainnet, base, optimism } from "viem/chains";
 
 const envSchema = z.object({
     ETHERSCAN_API_KEY: z.string().min(1, "Etherscan API key is required"),
