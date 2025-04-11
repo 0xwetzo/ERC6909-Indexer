@@ -18,10 +18,17 @@ Drawbacks:
 
 -   Response can take time, especially if the token is not indexed yet
 
+### Intended use
+
+Third-party services offer this type of endpoints fo ERC20 tokens, but not yet for ERC6909.
+This indexer allows to run an indexer for these tokens.
+It is not optimized for speed and high throughput, but it is light and efficient.
+Therefore, it is designed for internal or restricted use rather than exposed to the public.
+
 ## Installation
 
 ```bash
-git clone https://github.com/0xwetzo/ERC6909-Indexer.git
+git pull https://github.com/0xwetzo/ERC6909-Indexer.git
 cd ERC6909-Indexer
 npm install
 ```
