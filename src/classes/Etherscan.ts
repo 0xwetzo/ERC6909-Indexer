@@ -1,9 +1,12 @@
 import axios from "axios";
+import { Explorer } from "../types/Explorer";
 
-export class Etherscan {
-    apiKey: string;
+export class Etherscan implements Explorer {
+    private chainId: number;
+    private apiKey: string;
 
-    constructor(apiKey: string) {
+    constructor(chainId: number, apiKey: string) {
+        this.chainId = chainId;
         this.apiKey = apiKey;
     }
 
@@ -13,9 +16,13 @@ export class Etherscan {
      * @returns the block number
      */
     async getCreationBlock(contractAddress: string): Promise<number> {
-        const response = await axios.get(
-            `https://api.etherscan.io/api?module=contract&action=getcontractcreation&contractaddresses=${contractAddress}&apikey=${this.apiKey}`
-        );
-        return Number(response.data.result[0].blockNumber);
+        try {
+            const response = await axios.get(
+                `https://api.etherscan.io/api?chainid=${this.chainId}&module=contract&action=getcontractcreation&contractaddresses=${contractAddress}&apikey=${this.apiKey}`
+            );
+            return Number(response.data.result[0].blockNumber);
+        } catch (error) {
+            throw new Error(`Failed to fetch creation block: ${error}`);
+        }
     }
 }

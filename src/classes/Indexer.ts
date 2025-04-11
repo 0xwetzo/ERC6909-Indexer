@@ -9,6 +9,11 @@ import {
 import type { Address, Chain, PublicClient } from "viem";
 import { Etherscan } from "./Etherscan";
 
+interface Output {
+    holder: string;
+    balance: string;
+}
+
 interface Holder extends Output {
     chain: number;
     tokenAddress: string;
@@ -25,11 +30,6 @@ interface CachedBlock {
     chain: number;
     block: number;
     time: number;
-}
-
-interface Output {
-    holder: string;
-    balance: string;
 }
 
 export interface Network {
@@ -86,6 +86,7 @@ export class Indexer {
     // Use to initialize token creation block before starting the indexer
     async setCreationBlock(token: Address): Promise<number> {
         const creationBlock = await new Etherscan(
+            this.chain.id,
             this.apikeys[this.explorer]
         ).getCreationBlock(getAddress(token));
 
