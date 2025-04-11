@@ -1,18 +1,19 @@
 import "dotenv/config";
 import { z } from "zod";
 import type { Network } from "./classes/Indexer";
-import { mainnet, base, optimism } from "viem/chains";
+import { anvil, mainnet, base, optimism } from "viem/chains";
 import { Explorer } from "./types/Explorer";
 import { Etherscan } from "./classes/Etherscan";
+import { Mockscan } from "./classes/Mockscan";
 
 const envSchema = z.object({
-    ETHERSCAN_API_KEY: z.string().min(1, "Etherscan API key is required"),
     PORT: z.coerce
         .number()
         .refine((val) => !isNaN(val) && val > 0 && val <= 65535, {
             message: "PORT must be a valid port number between 1 and 65535",
         })
         .default(6909),
+    ETHERSCAN_API_KEY: z.string().min(1, "Etherscan API key is required"),
 });
 
 // Validate process.env against the schema
@@ -30,9 +31,15 @@ const { ETHERSCAN_API_KEY, PORT } = envVars;
 
 const explorers: Record<string, Explorer> = {
     etherscan: new Etherscan(ETHERSCAN_API_KEY),
+    mockscan: new Mockscan("TEST_API_KEY"),
 };
 
 export const networks: Record<number, Network> = {
+    [anvil.id]: {
+        chain: anvil,
+        rpc: "http://127.0.0.1:8545",
+        explorer: explorers.mockscan,
+    },
     [mainnet.id]: {
         chain: mainnet,
         rpc: "https://eth.llamarpc.com",
