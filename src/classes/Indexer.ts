@@ -84,8 +84,7 @@ export class Indexer {
             tokenId,
         });
 
-        const lastElement =
-            Math.min(holders.length, (page + 1) * maxResults) - 1;
+        const lastElement = Math.min(holders.length, (page + 1) * maxResults);
 
         return holders
             .sort((a, b) =>
@@ -109,7 +108,7 @@ export class Indexer {
 
         let fromBlock = await this.firstBlockToIndex(tokenAddress);
 
-        while (currentBlock - fromBlock > this.blockTolerance) {
+        while (currentBlock - fromBlock >= this.blockTolerance) {
             const toBlock = Math.min(currentBlock, fromBlock + this.blockRange);
             await this.fetchEventsInBlockRange(
                 tokenAddress,
@@ -121,13 +120,15 @@ export class Indexer {
     }
 
     private async firstBlockToIndex(tokenAddress: Address): Promise<number> {
+        const firstBlockFromStorage = (
+            await this.db.processEventsFrom.findOne({
+                chain: this.chain.id,
+                tokenAddress,
+            })
+        )?.block;
+
         return (
-            (
-                await this.db.processEventsFrom.findOne({
-                    chain: this.chain.id,
-                    tokenAddress,
-                })
-            )?.block ?? (await this.setCreationBlock(tokenAddress))
+            firstBlockFromStorage ?? (await this.setCreationBlock(tokenAddress))
         );
     }
 
@@ -151,10 +152,11 @@ export class Indexer {
         startBlock: number,
         endBlock: number
     ): Promise<void> {
+        // Event definition based on: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC6909/draft-ERC6909.sol
         const events = (await this.getPublicClient().getContractEvents({
             address: tokenAddress,
             abi: parseAbi([
-                "event Transfer(address by, address indexed from, address indexed to, uint256 indexed id, uint256 amount)",
+                "event Transfer(address caller, address indexed from, address indexed to, uint256 indexed id, uint256 amount)",
             ]),
             eventName: "Transfer",
             fromBlock: BigInt(startBlock),
@@ -162,7 +164,7 @@ export class Indexer {
         })) as unknown as {
             eventName: string;
             args: {
-                by: Address;
+                caller: Address;
                 from: Address;
                 to: Address;
                 id: bigint;
@@ -252,9 +254,9 @@ export class Indexer {
     }
 
     private initDb(): Db {
-        const holders = new Database<Holder>({ path: "../.db/holders.db" });
+        const holders = new Database<Holder>({ path: "./.db/holders.db" });
         const processEventsFrom = new Database<ProcessEventsFrom>({
-            path: "../.db/process_events_from.db",
+            path: "./.db/process_events_from.db",
         });
 
         return {

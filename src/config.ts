@@ -39,6 +39,7 @@ export const networks: Record<number, Network> = {
         chain: anvil,
         rpc: "http://127.0.0.1:8545",
         explorer: explorers.mockscan,
+        blockTolerance: 0,
     },
     [mainnet.id]: {
         chain: mainnet,

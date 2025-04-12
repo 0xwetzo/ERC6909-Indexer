@@ -26,6 +26,10 @@ This indexer allows to run an indexer for these tokens.
 It is not optimized for speed and high throughput, but it is light and efficient.
 Therefore, it is designed for internal or restricted use rather than exposed to the public.
 
+### Limitations
+
+While it should work with most ERC6909 tokens, special tokens with specific features like rebasing, or who implement `Mint` and `Burn` events on top of the `Transfer` event may create inconsistent results. Here we consider that all balance changes emit a `Transfer` event.
+
 ## Installation
 
 ```bash

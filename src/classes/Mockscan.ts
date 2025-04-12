@@ -5,7 +5,7 @@ import path from "path";
 export class Mockscan implements Explorer {
     private configFile: string;
 
-    constructor(configFilePath: string = "../../mockscan.txt") {
+    constructor(configFilePath: string = "./mockscan.txt") {
         this.configFile = path.resolve(configFilePath);
     }
 
