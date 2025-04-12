@@ -52,7 +52,7 @@ Here you can add support for more chains.
 ## Prerequisites
 
 You'll need access to an archive node from any RPC provider and an API key for Etherscan.
-The free tier should be sufficient for most use cases.
+The free tier should be sufficient for most personnal projects use cases.
 
 ## OpenAPI Specification
 
@@ -66,3 +66,9 @@ The indexer supports the following queries:
 -   `/erc6909`: Returns a sorted and paginated list of ERC6909 token holders.
 
 Use the OpenAPI specification or the RapiDoc interface to get more details on the input and output.
+
+![RapiDoc](./docs/RapiDoc.png)
+
+## Manual testing
+
+A `justfile` and a Foundry project with a Mock ERC6909 contract are provided with the useful commands to create various scenarios for manual testing.
