@@ -1,29 +1,31 @@
-import axios from "axios";
 import { Explorer } from "../types/Explorer";
+import fs from "fs/promises";
+import path from "path";
 
 export class Mockscan implements Explorer {
-    private apiKey: string;
+    private configFile: string;
 
-    constructor(apiKey: string) {
-        this.apiKey = apiKey;
+    constructor(configFilePath: string = "../../mockscan.txt") {
+        this.configFile = path.resolve(configFilePath);
     }
 
-    /**
-     * Retrieves the block number of the block where the given contract was deployed
-     * @param contractAddress the address of the contract
-     * @returns the block number
-     */
     async getCreationBlock(
-        chainId: number,
-        contractAddress: string
+        _chainId: number,
+        _contractAddress: string
     ): Promise<number> {
         try {
-            const response = await axios.get(
-                `https://127.0.0.1:8000/api?chainid=${chainId}&contractaddresses=${contractAddress}&apikey=${this.apiKey}`
-            );
-            return Number(response.data.result.blockNumber);
+            const fileContent = await fs.readFile(this.configFile, "utf-8");
+            const blockNumber = Number(fileContent.trim());
+
+            if (isNaN(blockNumber)) {
+                throw new Error("Invalid block number in config file");
+            }
+
+            return blockNumber;
         } catch (error) {
-            throw new Error(`Failed to fetch creation block: ${error}`);
+            throw new Error(
+                `Failed to read or parse block number from ${this.configFile}: ${error}`
+            );
         }
     }
 }

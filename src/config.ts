@@ -31,7 +31,7 @@ const { ETHERSCAN_API_KEY, PORT } = envVars;
 
 const explorers: Record<string, Explorer> = {
     etherscan: new Etherscan(ETHERSCAN_API_KEY),
-    mockscan: new Mockscan("TEST_API_KEY"),
+    mockscan: new Mockscan(),
 };
 
 export const networks: Record<number, Network> = {
