@@ -43,7 +43,9 @@ const erc6909Output = zApiOutput(
             balance: z.string(),
         })
         .array()
-        .openapi({ example: [{ holder: "0x...", balance: "..." }] })
+        .openapi({
+            example: [{ holder: "0x123456789...", balance: "1000000000" }],
+        })
 ).openapi("Sorted and paginated list of holders");
 
 holdersController.endpoint(
